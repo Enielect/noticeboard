@@ -1,0 +1,33 @@
+student-notice-board/
+├── app/
+│   ├── api/
+│   │   ├── auth/
+│   │   │   ├── login/route.js
+│   │   │   ├── register/route.js
+│   │   │   └── verify/route.js
+│   │   ├── notices/
+│   │   │   ├── route.js
+│   │   │   └── [id]/route.js
+│   │   ├── chat/
+│   │   │   └── route.js
+│   │   └── websocket/
+│   │       └── route.js
+│   ├── components/
+│   │   ├── Auth/
+│   │   ├── Notice/
+│   │   ├── Chat/
+│   │   └── UI/
+│   ├── lib/
+│   │   ├── auth.js
+│   │   ├── db.js
+│   │   └── websocket.js
+│   ├── dashboard/
+│   │   └── page.js
+│   ├── login/
+│   │   └── page.js
+│   ├── register/
+│   │   └── page.js
+│   └── layout.js
+├── middleware.js
+├── package.json
+└── README.md
