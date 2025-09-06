@@ -220,6 +220,10 @@ export default function StudentNoticeBoardApp({ user }: { user: TUser }) {
     }
   }, [chatMessages]);
 
+  useEffect(() => {
+    console.log("Current user:", currentUser);
+  }, [currentUser]);
+
   // Handle sending chat messages
   const handleSendMessage = () => {
     if (newMessage.trim() && socket?.connected && currentUser) {
@@ -625,14 +629,14 @@ export default function StudentNoticeBoardApp({ user }: { user: TUser }) {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-2 mb-1">
-                            <p className="text-sm font-medium text-gray-900">
+                            <p className="text-sm font-medium text-white">
                               {message.author_name}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-gray-300">
                               {formatDate(message.created_at)}
                             </p>
                           </div>
-                          <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2">
+                          <p className="bg-gradient-to-r from-blue-500 to-purple-500 text-sm text-white bg-gray-50 rounded-lg px-3 py-2">
                             {message.message}
                           </p>
                         </div>

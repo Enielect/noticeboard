@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await getUser(email);
-    if (!user) {
+    if (!user.success || !user.data) {
       console.log("User not found:", email);
       return NextResponse.json(
         { error: "Invalid credentials" },
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const isValidPassword = await comparePassword(password, user.passwordHash);
+    const isValidPassword = await comparePassword(password, user.data.passwordHash);
     if (!isValidPassword) {
       console.log("Invalid password for user:", email);
       return NextResponse.json(
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!user.isVerified) {
+    if (!user.data.isVerified) {
       console.log("User not verified:", email);
       return NextResponse.json(
         { error: "Please verify your email address first" },
@@ -40,14 +40,14 @@ export async function POST(request: NextRequest) {
     }
 
     // This is to generate an access Token
-    const token = generateToken(user.id, user.email);
+    const token = generateToken(user.data.id, user.data.email);
 
     const response = NextResponse.json({
       message: "Login successful",
       user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
+        id: user.data.id,
+        email: user.data.email,
+        fullName: user.data.fullName,
       },
     });
 

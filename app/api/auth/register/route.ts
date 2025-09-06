@@ -40,9 +40,9 @@ export async function POST(request: NextRequest) {
     }
 
     const existingUser = await getUser(email);
-    if (existingUser) {
+    if (!existingUser.success) {
       return NextResponse.json(
-        { error: "User with this email already exists" },
+        { error: existingUser.error },
         { status: 409 }
       );
     }
@@ -58,23 +58,31 @@ export async function POST(request: NextRequest) {
       verificationToken,
     });
 
+    if(!user.success) {
+      console.error(user.error)
+      return NextResponse.json(
+        { error: user.error },
+        { status: 500 }
+      );
+    }
+
     const sendEmail = await fetch(`${process.env.SERVER_URL}/api/auth/send`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        email: user.email,
-        name: user.fullName,
+        email: user.data?.email,
+        name: user.data?.fullName,
         token: verificationToken,
       }),
     });
 
     if (!sendEmail.ok) {
-      // I need to correct this implementation.
+      const emailError = await sendEmail.text();
+      console.error("Email sending failed:", emailError);
       return NextResponse.json(
-        { error: "Failed to send verification email" },
-
+        { error: "Failed to send verification email. Please try again." },
         { status: 500 }
       );
     }
@@ -82,12 +90,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       message:
         "Registration successful. Please check your email for verification.",
-      userId: user.id,
+      userId: user.data?.id,
     });
   } catch (error) {
     console.error("Registration error:", error);
+    
+    // Handle specific known errors
+    if (error instanceof Error) {
+      if (error.message.includes("duplicate") || error.message.includes("unique")) {
+        return NextResponse.json(
+          { error: "User already exists" },
+          { status: 409 }
+        );
+      }
+      if (error.message.includes("network") || error.message.includes("connection")) {
+        return NextResponse.json(
+          { error: "Service temporarily unavailable" },
+          { status: 503 }
+        );
+      }
+    }
+    
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Registration failed. Please try again." },
       { status: 500 }
     );
   }

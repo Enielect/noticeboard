@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useRouter } from "next/navigation";
 import { WaveSvg } from "../components/wave-svg";
@@ -10,35 +10,49 @@ export default function Register() {
   const [fullName, setFullName] = useState("");
   const [matricNumber, setMatricNumber] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(""), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const res = await fetch(`${process.env.SERVER_URL}/api/auth/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          studentId: matricNumber,
-          fullName,
-          password,
-        }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SERVER_URL}/api/auth/register`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            studentId: matricNumber,
+            fullName,
+            password,
+          }),
+        }
+      );
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || "Registration failed");
+        setError(errorData.error || "Registration failed");
+        setIsLoading(false);
+        return;
       }
 
       await res.json();
       router.push("/");
     } catch (err) {
       console.error("Registration error:", err);
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -54,6 +68,15 @@ export default function Register() {
           <h2 className="note ">Create Your Account</h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {error && (
+            <div
+              className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+              role="alert"
+            >
+              <span className="block sm:inline">{error}</span>
+            </div>
+          )}
+          <input type="hidden" name="remember" defaultValue="true" />
           <div className="rounded-md shadow-sm space-y-4">
             <div>
               <label htmlFor="fullname" className="sr-only">

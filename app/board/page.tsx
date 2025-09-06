@@ -16,7 +16,7 @@ const BoardPage = async () => {
       and(eq(usersTable.email, user.email), eq(usersTable.isVerified, true)),
   });
 
-  if (!userData) {
+  if (!userData.data) {
     redirect("/login");
   }
 
@@ -30,7 +30,7 @@ const BoardPage = async () => {
       style={{ backgroundImage: "url('/background.jpeg')" }}
     >
       {isUserVerified ? (
-        <StudentNoticeBoardApp user={userData} />
+        <StudentNoticeBoardApp user={userData.data} />
       ) : (
         <p>Check your email to verify your account</p>
       )}
