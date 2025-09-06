@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getNotices, createNotice } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
-import { wsManager } from '@/lib/websocket';
 
 export async function GET() {
   try {
@@ -47,7 +46,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Broadcast to all connected clients
-    await wsManager.broadcastNotice(notice);
+    // await wsManager.broadcastNotice(notice);
 
     return NextResponse.json(notice, { status: 201 });
 
