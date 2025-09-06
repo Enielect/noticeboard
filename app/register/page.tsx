@@ -2,7 +2,7 @@
 import { useState } from "react";
 
 import { useRouter } from "next/navigation";
-import { WaveSvg } from "../login/page";
+import { WaveSvg } from "../components/wave-svg";
 
 export default function Register() {
   const [email, setEmail] = useState("");

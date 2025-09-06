@@ -10,7 +10,6 @@ import {
   PlusCircle,
   Clock,
   User,
-  LogOut,
   Pin,
   AlertCircle,
   CheckCircle2,
@@ -98,7 +97,6 @@ export default function StudentNoticeBoardApp({ user }: { user: TUser }) {
     };
   }, []);
 
-  useEffect(() => console.log("Socket updated:", socket), [socket]);
 
   // const wsClient = useRef<WebSocketClient | null>(null);
   // const wsClient = useRef(class WebSocketClient {})
@@ -213,7 +211,7 @@ export default function StudentNoticeBoardApp({ user }: { user: TUser }) {
     //       created_at: new Date(Date.now() - 172800000).toISOString(),
     //     },
     //   ]);
-  }, []);
+  }, [user.id, user.fullName, user.email, user.studentId]);
 
   // Auto-scroll chat to bottom
   useEffect(() => {

@@ -10,7 +10,6 @@ import {
   usersTable,
 } from "@/db/schema";
 import { eq, gte, sql, and } from "drizzle-orm";
-import jwt from 'jsonwebtoken'
 import { desc } from "drizzle-orm";
 
 export interface NoticeWithAuthor extends Notice {
@@ -45,7 +44,6 @@ export async function getUser(email: string): Promise<User | null> {
   });
   return result || null;
 }
-
 
 export async function getUserById(id: string): Promise<User | null> {
   const result = await db.query.usersTable.findFirst({
