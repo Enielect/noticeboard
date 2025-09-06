@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
+import { cookies } from 'next/headers';
 
-export function middleware(request: NextRequest) {
-  const token = request.cookies.get('auth-token')?.value;
+export async function middleware(request: NextRequest) {
+  // const token = request.cookies.get('auth-token')?.value;
+  const token = (await cookies()).get('auth-token')?.value;
+  
   
   // Protected routes
   const protectedPaths = ['/dashboard', '/api/notices', '/api/chat'];
@@ -26,5 +29,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/api/notices/:path*', '/api/chat/:path*']
+  matcher: ['/dashboard/:path*', '/api/notices/:path*', '/api/chat/:path*', '/board/:path*']
 };

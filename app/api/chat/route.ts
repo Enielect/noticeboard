@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getChatMessages, createChatMessage } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
-import { wsManager } from '@/lib/websocket';
 
 export async function GET() {
   try {
@@ -47,13 +46,13 @@ export async function POST(request: NextRequest) {
     const chatMessage = await createChatMessage(message.trim(), decoded.userId);
 
     // Broadcast to all connected clients
-    await wsManager.broadcastMessage({
-      type: 'chat',
-      data: {
-        ...chatMessage,
-        author_name: decoded.fullName || 'Unknown User'
-      }
-    }, decoded.userId);
+    // await wsManager.broadcastMessage({
+    //   type: 'chat',
+    //   data: {
+    //     ...chatMessage,
+    //     author_name: decoded.fullName || 'Unknown User'
+    //   }
+    // }, decoded.userId);
 
     return NextResponse.json(chatMessage, { status: 201 });
 
