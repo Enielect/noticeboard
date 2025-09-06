@@ -174,6 +174,7 @@ export async function updateNotice(
   updates: Partial<CreateNoticeData>
 ): Promise<Notice | null> {
   const filteredUpdates = Object.fromEntries(
+    //eslint-disable-next-line @typescript-eslint/no-unused-vars
     Object.entries(updates).filter(([_, value]) => value !== null)
   );
 
