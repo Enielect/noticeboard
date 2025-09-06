@@ -1,9 +1,9 @@
+import { verifyUser } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const { token } = await request.json();
+    const token = request.nextUrl.searchParams.get('token');
 
     if (!token) {
       return NextResponse.json(
@@ -12,12 +12,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await query(
-      'UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE verification_token = $1 RETURNING email',
-      [token]
-    );
+    const result = await verifyUser(token);
 
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       return NextResponse.json(
         { error: 'Invalid or expired verification token' },
         { status: 400 }

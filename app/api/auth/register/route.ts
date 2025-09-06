@@ -6,7 +6,6 @@ export async function POST(request: NextRequest) {
   try {
     const { email, studentId, fullName, password } = await request.json();
 
-    // Validation
     if (!email || !studentId || !fullName || !password) {
       return NextResponse.json(
         { error: 'All fields are required' },
@@ -23,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     if (!isValidStudentId(studentId)) {
       return NextResponse.json(
-        { error: 'Invalid student ID format' },
+        { error: 'Invalid Matric Number format' },
         { status: 400 }
       );
     }
@@ -35,7 +34,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user already exists
     const existingUser = await getUser(email);
     if (existingUser) {
       return NextResponse.json(
@@ -44,7 +42,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create user
     const passwordHash = await hashPassword(password);
     const verificationToken = generateVerificationToken();
 
@@ -56,8 +53,27 @@ export async function POST(request: NextRequest) {
       verificationToken
     });
 
-    // In production, send verification email here
-    console.log(`Verification token for ${email}: ${verificationToken}`);
+    const sendEmail = await fetch('http://localhost:3000/api/auth/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email: user.email,
+        name: user.fullName,
+        token: verificationToken
+      })
+    });
+
+    if (!sendEmail.ok) {
+      // I need to correct this implementation.
+      return NextResponse.json(
+        { error: 'Failed to send verification email' },
+
+        { status: 500 }
+      );
+    }
+
 
     return NextResponse.json({
       message: 'Registration successful. Please check your email for verification.',
