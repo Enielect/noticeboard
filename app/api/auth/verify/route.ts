@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
 
     const result = await verifyUser(token);
 
-    if (result.length === 0) {
+    if (!result.success && result.error) {
       return NextResponse.json(
-        { error: 'Invalid or expired verification token' },
+        { error: result.error || 'Invalid or expired verification token' },
         { status: 400 }
       );
     }

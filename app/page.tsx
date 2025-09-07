@@ -1,5 +1,7 @@
 import Image from "next/image";
 
+// export const runtime = "edge";
+
 export default function Home() {
   //There should be something here that tell the user to verify their account before they can use the appilcation.
   //The verification link is sent to their mails immediately after sign up
