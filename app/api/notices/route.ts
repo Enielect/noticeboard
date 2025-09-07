@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getNotices, createNotice } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 
+// export const runtime = 'edge';
+
 export async function GET() {
   try {
     const notices = await getNotices();
