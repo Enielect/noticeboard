@@ -17,6 +17,7 @@ import {
   Search,
   Filter,
 } from "lucide-react";
+import { logout } from "../action/logout";
 
 interface Notification {
   id: number;
@@ -26,20 +27,20 @@ interface Notification {
 }
 
 interface Notice {
-  id: number;
+  id: string;
   title: string;
   content: string;
-  author_name: string;
+  authorName?: string; // I have to derive the authorName from the id
   category: string;
   priority: string;
-  is_pinned: boolean;
-  created_at: string;
+  isPinned: boolean;
+  createdAt: Date | string;
 }
 
 interface TChatMessages {
   id: number;
   message: string;
-  author_name: string;
+  authorName: string;
   created_at: string;
 }
 
@@ -49,9 +50,16 @@ interface TUser {
   fullName: string;
   studentId: string;
 }
-export default function StudentNoticeBoardApp({ user }: { user: TUser }) {
+export default function StudentNoticeBoardApp({
+  user,
+  initialNotices,
+}: {
+  user: TUser;
+  initialNotices: Notice[];
+}) {
   const [currentUser, setCurrentUser] = useState<TUser | null>(null);
-  const [notices, setNotices] = useState<Notice[]>([]);
+  const [notices, setNotices] = useState<Notice[]>(initialNotices);
+  const [createNoticeLoading, setCreateNoticeLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState<TChatMessages[]>([]);
   const [activeTab, setActiveTab] = useState("notices");
   const [newMessage, setNewMessage] = useState("");
@@ -73,7 +81,6 @@ export default function StudentNoticeBoardApp({ user }: { user: TUser }) {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    console.log("Connecting to WebSocket server...");
     const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || "", {
       transports: ["websocket"],
     });
@@ -87,16 +94,18 @@ export default function StudentNoticeBoardApp({ user }: { user: TUser }) {
     });
 
     newSocket.on("message", (newMessage) => {
-      console.log("Received message:", newMessage);
       setChatMessages((prevMessages) => [...prevMessages, newMessage]);
+    });
+
+    newSocket.on("notice", (newNotice) => {
+      setNotices((prevNotices) => [newNotice, ...prevNotices]);
     });
 
     setSocket(newSocket);
     return () => {
       newSocket.disconnect();
     };
-  }, []);
-
+  }, [notices]);
 
   // const wsClient = useRef<WebSocketClient | null>(null);
   // const wsClient = useRef(class WebSocketClient {})
@@ -172,45 +181,6 @@ export default function StudentNoticeBoardApp({ user }: { user: TUser }) {
       fullName: user.fullName,
       studentId: user.studentId,
     });
-
-    // Initialize mock notices
-    // Define notice type
-
-    //   setNotices([
-    //     {
-    //       id: 1,
-    //       title: "Important: Mid-term Exam Schedule Released",
-    //       content:
-    //         "The mid-term examination schedule has been released. Please check your student portal for detailed timing and venue information. All students must carry their ID cards during the examination.",
-    //       author_name: "Academic Office",
-    //       category: "academic",
-    //       priority: "high",
-    //       is_pinned: true,
-    //       created_at: new Date().toISOString(),
-    //     },
-    //     {
-    //       id: 2,
-    //       title: "Library Hours Extended During Finals",
-    //       content:
-    //         "The university library will extend its operating hours during the final exam period. New timings: 6:00 AM - 12:00 AM from Monday to Sunday.",
-    //       author_name: "Library Staff",
-    //       category: "facilities",
-    //       priority: "normal",
-    //       is_pinned: false,
-    //       created_at: new Date(Date.now() - 86400000).toISOString(),
-    //     },
-    //     {
-    //       id: 3,
-    //       title: "Student Council Elections - Nominations Open",
-    //       content:
-    //         "Nominations for Student Council elections are now open. Interested candidates can submit their applications at the student affairs office by Friday.",
-    //       author_name: "Student Affairs",
-    //       category: "events",
-    //       priority: "normal",
-    //       is_pinned: false,
-    //       created_at: new Date(Date.now() - 172800000).toISOString(),
-    //     },
-    //   ]);
   }, [user.id, user.fullName, user.email, user.studentId]);
 
   // Auto-scroll chat to bottom
@@ -220,9 +190,13 @@ export default function StudentNoticeBoardApp({ user }: { user: TUser }) {
     }
   }, [chatMessages]);
 
-  useEffect(() => {
-    console.log("Current user:", currentUser);
-  }, [currentUser]);
+  const handleLogout = async() => {
+    if (socket) {
+      socket.disconnect();
+    }
+    // Clear user data and redirect to login
+    await logout();
+  };
 
   // Handle sending chat messages
   const handleSendMessage = () => {
@@ -231,7 +205,7 @@ export default function StudentNoticeBoardApp({ user }: { user: TUser }) {
         id: Date.now(),
         type: "chat",
         message: newMessage.trim(),
-        author_name: currentUser.fullName,
+        authorName: currentUser.fullName,
         created_at: new Date().toISOString(),
       };
 
@@ -243,28 +217,65 @@ export default function StudentNoticeBoardApp({ user }: { user: TUser }) {
   };
 
   // Handle creating new notice
-  const handleCreateNotice = () => {
+  const handleCreateNotice = async () => {
     if (newNotice.title.trim() && newNotice.content.trim() && currentUser) {
       const notice = {
-        id: Date.now(),
-        ...newNotice,
-        author_name: currentUser.fullName,
-        is_pinned: false,
-        created_at: new Date().toISOString(),
+        // id: Date.now(),
+        title: newNotice.title,
+        content: newNotice.content,
+        category: newNotice.category,
+        authorName: currentUser.fullName,
+        priority: newNotice.priority,
+        expires_at: newNotice.expiresAt,
+        // isPinned: false, (we'll add this feature)
+        // createdAt: new Date().toISOString(),
       };
 
-      setNotices((prev) => [notice, ...prev]);
-      setNewNotice({
-        title: "",
-        content: "",
-        category: "general",
-        priority: "normal",
-        expiresAt: "",
-      });
-      setShowNoticeForm(false);
+      try {
+        setCreateNoticeLoading(true);
+        const response = await fetch("/api/notices", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(notice),
+        });
 
-      // Show success notification
-      addNotification("Notice created successfully!", "success");
+        if (!response.ok) {
+          const error = await response.json();
+          addNotification(error.message || "Failed to create notice", "error");
+          setCreateNoticeLoading(false);
+          return;
+        }
+
+        const createdNotice = await response.json();
+        // setNotices((prev) => [createdNotice.data, ...prev]); // we don't need this since we are using web socket to get the new notice
+        socket?.emit("notice", createdNotice.data);
+        setNewNotice({
+          title: "",
+          content: "",
+          category: "general",
+          priority: "normal",
+          expiresAt: "",
+        });
+        setShowNoticeForm(false);
+
+        // Show success notification
+        addNotification("Notice created successfully!", "success");
+      } catch (err) {
+        // Check if the error is a network error
+        if (err instanceof TypeError && err.message.includes("fetch")) {
+          addNotification(
+            "Network error: Please check your internet connection",
+            "error"
+          );
+        } else {
+          // addNotification("Failed to create notice", "error");
+          console.error(err);
+        }
+      } finally {
+        setCreateNoticeLoading(false);
+      }
     }
   };
 
@@ -288,8 +299,8 @@ export default function StudentNoticeBoardApp({ user }: { user: TUser }) {
   // Filter notices
   const filteredNotices = notices.filter((notice) => {
     const matchesSearch =
-      notice.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      notice.content.toLowerCase().includes(searchTerm.toLowerCase());
+      notice?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      notice?.content?.toLowerCase().includes(searchTerm.toLowerCase()); // why should I be getting undefined here?
     const matchesCategory =
       selectedCategory === "all" || notice.category === selectedCategory;
     return matchesSearch && matchesCategory;
@@ -418,7 +429,10 @@ export default function StudentNoticeBoardApp({ user }: { user: TUser }) {
                     </p>
                   </div>
                 </div>
-                <button className="p-2 text-white hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                <button
+                  onClick={handleLogout}
+                  className="p-2 text-white hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
@@ -561,14 +575,14 @@ export default function StudentNoticeBoardApp({ user }: { user: TUser }) {
                       <div
                         key={notice.id}
                         className={`p-6 rounded-lg border-2 transition-all hover:shadow-md ${
-                          notice.is_pinned
-                            ? "border-yellow-200 bg-yellow-50"
+                          notice.isPinned
+                            ? "border-yellow-200 bg-yecreatedAt"
                             : "border-gray-200 bg-white hover:border-gray-300"
                         }`}
                       >
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center space-x-3">
-                            {notice.is_pinned && (
+                            {notice.isPinned && (
                               <Pin className="w-4 h-4 text-yellow-600" />
                             )}
                             <h3 className="text-lg font-semibold text-gray-900">
@@ -601,11 +615,15 @@ export default function StudentNoticeBoardApp({ user }: { user: TUser }) {
                           <div className="flex items-center space-x-4">
                             <div className="flex items-center space-x-1">
                               <User className="w-4 h-4" />
-                              <span>{notice.author_name}</span>
+                              <span>{notice.authorName}</span>
                             </div>
                             <div className="flex items-center space-x-1">
                               <Clock className="w-4 h-4" />
-                              <span>{formatDate(notice.created_at)}</span>
+                              <span>
+                                {formatDate(
+                                  new Date(notice.createdAt).toISOString()
+                                )}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -630,7 +648,7 @@ export default function StudentNoticeBoardApp({ user }: { user: TUser }) {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-2 mb-1">
                             <p className="text-sm font-medium text-white">
-                              {message.author_name}
+                              {message.authorName}
                             </p>
                             <p className="text-xs text-gray-300">
                               {formatDate(message.created_at)}
@@ -880,7 +898,7 @@ export default function StudentNoticeBoardApp({ user }: { user: TUser }) {
                 disabled={!newNotice.title.trim() || !newNotice.content.trim()}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Create Notice
+                {createNoticeLoading ? "Creating..." : "Create Notice"}
               </button>
             </div>
           </div>
