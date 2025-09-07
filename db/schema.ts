@@ -27,12 +27,12 @@ export const noticesTable = pgTable("notices", {
   authorId: uuid("author_id")
     .references(() => usersTable.id, { onDelete: "cascade" })
     .notNull(),
-  category: varchar("category", { length: 100 }).default("general"),
-  priority: varchar("priority", { length: 20 }).default("normal"),
+  category: varchar("category", { length: 100 }).default("general").notNull(),
+  priority: varchar("priority", { length: 20 }).default("normal").notNull(),
   expiresAt: timestamp("expires_at")
     .notNull()
     .default(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)), // Default to 7 days from now
-  isPinned: boolean("is_pinned").default(false),
+  isPinned: boolean("is_pinned").default(false).notNull(),
   createdAt: timestamp("created_at").default(new Date()).notNull(),
   updatedAt: timestamp("updated_at")
     .default(new Date())

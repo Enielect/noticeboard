@@ -44,6 +44,14 @@ export async function POST(request: NextRequest) {
       priority,
       expiresAt: expiresAt ? new Date(expiresAt) : null
     });
+    console.error(notice, 'this is the notice')
+
+    if(!notice.success || notice.error) {
+      return NextResponse.json(
+        { error: notice.error || 'Failed to create notice' },
+        { status: 500 }
+      );
+    }
 
     // Broadcast to all connected clients
     // await wsManager.broadcastNotice(notice);
