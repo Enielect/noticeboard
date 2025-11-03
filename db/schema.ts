@@ -57,21 +57,6 @@ export const indexes = [
   { table: "chat_messages", column: "created_at", order: "DESC" },
 ];
 
-// Export the database schema
-// export const schema = {
-//   users: usersTable,
-//   notices: noticesTable,
-//   chatMessages: chatMessagesTable,
-//   indexes,
-// };
-
-// -- Create indexes for performance
-// CREATE INDEX idx_notices_created_at ON notices(created_at DESC);
-// CREATE INDEX idx_notices_category ON notices(category);
-// CREATE INDEX idx_notices_pinned ON notices(is_pinned);
-// CREATE INDEX idx_chat_messages_created_at ON chat_messages(created_at DESC);
-
-// Type inference exports
 export type User = typeof usersTable.$inferSelect;
 export type NewUser = typeof usersTable.$inferInsert;
 

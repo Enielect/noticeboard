@@ -18,38 +18,10 @@ import {
   Filter,
 } from "lucide-react";
 import { logout } from "../action/logout";
+import { formatDate, getCategoryColor, getPriorityColor } from "@/lib/utils";
 
-interface Notification {
-  id: number;
-  message: string;
-  type: string;
-  timestamp: Date;
-}
+import type {Notification, Notice, TChatMessages, TUser} from "@/lib/types/general";
 
-interface Notice {
-  id: string;
-  title: string;
-  content: string;
-  authorName?: string; // I have to derive the authorName from the id
-  category: string;
-  priority: string;
-  isPinned: boolean;
-  createdAt: Date | string;
-}
-
-interface TChatMessages {
-  id: number;
-  message: string;
-  authorName: string;
-  created_at: string;
-}
-
-interface TUser {
-  id: string;
-  email: string;
-  fullName: string;
-  studentId: string;
-}
 export default function StudentNoticeBoardApp({
   user,
   initialNotices,
@@ -57,7 +29,6 @@ export default function StudentNoticeBoardApp({
   user: TUser;
   initialNotices: Notice[];
 }) {
-  const [currentUser, setCurrentUser] = useState<TUser | null>(null);
   const [notices, setNotices] = useState<Notice[]>(initialNotices);
   const [createNoticeLoading, setCreateNoticeLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState<TChatMessages[]>([]);
@@ -107,81 +78,6 @@ export default function StudentNoticeBoardApp({
     };
   }, [notices]);
 
-  // const wsClient = useRef<WebSocketClient | null>(null);
-  // const wsClient = useRef(class WebSocketClient {})
-
-  // useEffect(() => {
-  //   // Initialize WebSocket connection
-  //   const initializeWebSocket = () => {
-  //     // Replace with your actual WebSocket server URL
-  //     const wsUrl =
-  //       process.env.NODE_ENV === "production"
-  //         ? "wss://your-websocket-server.com/ws"
-  //         : "ws://localhost:8080";
-
-  //     // wsClient.current = new WebSocketClient(wsUrl);
-
-  //     // Set up event handlers
-  //     wsClient.current.onOpen = () => {
-  //       console.log("Connected to WebSocket server");
-  //       addNotification("Connected to chat server", "success");
-  //     };
-
-  //     wsClient.current.onMessage = (message) => {
-  //       if (message.type === "chat") {
-  //         setChatMessages((prev) => [
-  //           ...prev,
-  //           {
-  //             ...message.data,
-  //             id: Date.now(),
-  //             created_at: new Date().toISOString(),
-  //           },
-  //         ]);
-  //       } else if (message.type === "notice") {
-  //         // Handle new notice from server
-  //         setNotices((prev) => [message.data, ...prev]);
-  //         addNotification("New notice posted", "info");
-  //       }
-  //     };
-
-  //     wsClient.current.onClose = () => {
-  //       console.log("Disconnected from WebSocket server");
-  //       addNotification("Disconnected from chat server", "error");
-  //     };
-
-  //     wsClient.current.onError = (error) => {
-  //       console.error("WebSocket error:", error);
-  //       addNotification("Connection error", "error");
-  //     };
-
-  //     wsClient.current.onUserCountUpdate = (count) => {
-  //       setConnectedUsers(count);
-  //     };
-
-  //     // Connect to the server
-  //     wsClient.current.connect();
-  //   };
-
-  //   initializeWebSocket();
-
-  //   // Cleanup on unmount
-  //   return () => {
-  //     if (wsClient.current) {
-  //       wsClient.current.disconnect();
-  //     }
-  //   };
-  // }, []);
-
-  // Mock data for demonstration
-  useEffect(() => {
-    // Initialize mock user
-    setCurrentUser({
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      studentId: user.studentId,
-    });
-  }, [user.id, user.fullName, user.email, user.studentId]);
 
   // Auto-scroll chat to bottom
   useEffect(() => {
@@ -194,18 +90,17 @@ export default function StudentNoticeBoardApp({
     if (socket) {
       socket.disconnect();
     }
-    // Clear user data and redirect to login
     await logout();
   };
 
   // Handle sending chat messages
   const handleSendMessage = () => {
-    if (newMessage.trim() && socket?.connected && currentUser) {
+    if (newMessage.trim() && socket?.connected && user) {
       const messageData = {
         id: Date.now(),
         type: "chat",
         message: newMessage.trim(),
-        authorName: currentUser.fullName,
+        authorName: user.fullName,
         created_at: new Date().toISOString(),
       };
 
@@ -216,19 +111,16 @@ export default function StudentNoticeBoardApp({
     }
   };
 
-  // Handle creating new notice
   const handleCreateNotice = async () => {
-    if (newNotice.title.trim() && newNotice.content.trim() && currentUser) {
+    if (newNotice.title.trim() && newNotice.content.trim() && user) {
       const notice = {
-        // id: Date.now(),
         title: newNotice.title,
         content: newNotice.content,
         category: newNotice.category,
-        authorName: currentUser.fullName,
+        authorName: user.fullName,
         priority: newNotice.priority,
         expires_at: newNotice.expiresAt,
         // isPinned: false, (we'll add this feature)
-        // createdAt: new Date().toISOString(),
       };
 
       try {
@@ -260,7 +152,6 @@ export default function StudentNoticeBoardApp({
         });
         setShowNoticeForm(false);
 
-        // Show success notification
         addNotification("Notice created successfully!", "success");
       } catch (err) {
         // Check if the error is a network error
@@ -306,46 +197,6 @@ export default function StudentNoticeBoardApp({
     return matchesSearch && matchesCategory;
   });
 
-  // Format date
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-    return date.toLocaleDateString();
-  };
-
-  // Get priority color
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return "text-red-600 bg-red-50 border-red-200";
-      case "medium":
-        return "text-yellow-600 bg-yellow-50 border-yellow-200";
-      default:
-        return "text-green-600 bg-green-50 border-green-200";
-    }
-  };
-
-  // Get category color
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case "academic":
-        return "bg-blue-100 text-blue-800";
-      case "events":
-        return "bg-purple-100 text-purple-800";
-      case "facilities":
-        return "bg-green-100 text-green-800";
-      case "announcements":
-        return "bg-orange-100 text-orange-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
 
   return (
     //  bg-gradient-to-br from-blue-50 via-white to-purple-50
@@ -414,7 +265,7 @@ export default function StudentNoticeBoardApp({
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
                   <div className="w-10 h-10 text-white p-4 bg-blue-600 rounded-full flex items-center justify-center">
-                    {currentUser?.fullName
+                    {user?.fullName
                       .split(" ")
                       .map((n) => n[0])
                       .join("")
@@ -422,10 +273,10 @@ export default function StudentNoticeBoardApp({
                   </div>
                   <div className="hidden md:block">
                     <p className="text-sm font-medium text-white">
-                      {currentUser?.fullName}
+                      {user?.fullName}
                     </p>
                     <p className="text-xs text-white">
-                      {currentUser?.studentId}
+                      {user?.studentId}
                     </p>
                   </div>
                 </div>

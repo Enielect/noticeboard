@@ -9,41 +9,10 @@ import {
   User,
   usersTable,
 } from "@/db/schema";
-import { eq, gte, sql, and, DrizzleError } from "drizzle-orm";
+import type { CreateUserData, CreateNoticeData, DatabaseResult, ChatMessageWithAuthor, NoticeWithAuthor } from "@/lib/types/db";
+import { eq, gte, sql, DrizzleError } from "drizzle-orm";
 import { desc } from "drizzle-orm";
 
-export interface NoticeWithAuthor extends Notice {
-  authorName: string;
-}
-
-export interface ChatMessageWithAuthor extends ChatMessage {
-  authorName: string;
-}
-
-export interface CreateUserData {
-  email: string;
-  studentId: string;
-  fullName: string;
-  passwordHash: string;
-  verificationToken: string;
-}
-
-export interface CreateNoticeData {
-  title: string;
-  content: string;
-  authorId: string;
-  category: string;
-  priority: "normal" | "medium" | "high";
-  expiresAt?: Date | null;
-}
-
-export interface DatabaseResult<T> {
-  data?: T;
-  error?: string;
-  success: boolean;
-}
-
-// Database helper functions with proper typing and error handling
 export async function getUser(
   email: string
 ): Promise<DatabaseResult<User | null>> {
@@ -202,39 +171,6 @@ export async function getNotices(
   }
 }
 
-export async function getNoticesByCategory(
-  category: string,
-  limit: number = 50
-): Promise<DatabaseResult<NoticeWithAuthor[]>> {
-  try {
-    const result = await db.query.noticesTable.findMany({
-      where: eq(noticesTable.category, category),
-      orderBy: [desc(noticesTable.isPinned), desc(noticesTable.createdAt)],
-      limit: limit,
-    });
-
-    const noticesWithAuthors = await Promise.all(
-      result.map(async (notice) => {
-        const userResult = await getUserById(notice.authorId || "");
-        return {
-          ...notice,
-          authorName:
-            userResult.success && userResult.data?.fullName
-              ? userResult.data.fullName
-              : "Unknown User",
-        };
-      })
-    );
-
-    return { data: noticesWithAuthors, success: true };
-  } catch (error) {
-    return {
-      error: `Failed to fetch notices by category: ${error instanceof Error ? error.message : "Unknown error"}`,
-      success: false,
-    };
-  }
-}
-
 export async function searchNotices(
   searchTerm: string,
   limit: number = 50
@@ -295,76 +231,6 @@ export async function createNotice(
   }
 }
 
-export async function updateNotice(
-  id: string,
-  updates: Partial<CreateNoticeData>
-): Promise<DatabaseResult<Notice | null>> {
-  try {
-    const filteredUpdates = Object.fromEntries(
-      //eslint-disable-next-line @typescript-eslint/no-unused-vars
-      Object.entries(updates).filter(([_, value]) => value !== null)
-    );
-
-    const result = await db
-      .update(noticesTable)
-      .set({
-        ...filteredUpdates,
-        updatedAt: new Date(),
-      })
-      .where(eq(noticesTable.id, id))
-      .returning();
-
-    return { data: result[0] || null, success: true };
-  } catch (error) {
-    return {
-      error: `Failed to update notice: ${error instanceof Error ? error.message : "Unknown error"}`,
-      success: false,
-    };
-  }
-}
-
-export async function deleteNotice(
-  id: string,
-  authorId: string
-): Promise<DatabaseResult<boolean>> {
-  try {
-    const result = await db
-      .delete(noticesTable)
-      .where(and(eq(noticesTable.id, id), eq(noticesTable.authorId, authorId)))
-      .returning();
-
-    return { data: result[0] !== undefined, success: true };
-  } catch (error) {
-    return {
-      error: `Failed to delete notice: ${error instanceof Error ? error.message : "Unknown error"}`,
-      success: false,
-    };
-  }
-}
-
-export async function pinNotice(
-  id: string,
-  isPinned: boolean
-): Promise<DatabaseResult<Notice | null>> {
-  try {
-    const result = await db
-      .update(noticesTable)
-      .set({
-        isPinned,
-        updatedAt: new Date(),
-      })
-      .where(eq(noticesTable.id, id))
-      .returning();
-
-    return { data: result[0] || null, success: true };
-  } catch (error) {
-    return {
-      error: `Failed to pin/unpin notice: ${error instanceof Error ? error.message : "Unknown error"}`,
-      success: false,
-    };
-  }
-}
-
 export async function getChatMessages(
   limit: number = 100
 ): Promise<DatabaseResult<ChatMessageWithAuthor[]>> {
@@ -413,93 +279,6 @@ export async function createChatMessage(
   } catch (error) {
     return {
       error: `Failed to create chat message: ${error instanceof Error ? error.message : "Unknown error"}`,
-      success: false,
-    };
-  }
-}
-
-export async function deleteChatMessage(
-  id: string,
-  authorId: string
-): Promise<DatabaseResult<boolean>> {
-  try {
-    const result = await db
-      .delete(chatMessagesTable)
-      .where(
-        and(
-          eq(chatMessagesTable.id, id),
-          eq(chatMessagesTable.authorId, authorId)
-        )
-      )
-      .returning();
-
-    return { data: result[0] !== undefined, success: true };
-  } catch (error) {
-    return {
-      error: `Failed to delete chat message: ${error instanceof Error ? error.message : "Unknown error"}`,
-      success: false,
-    };
-  }
-}
-
-export async function getNoticeStats(): Promise<
-  DatabaseResult<{
-    total: number;
-    byCategory: Record<string, number>;
-    byPriority: Record<string, number>;
-  }>
-> {
-  try {
-    const totalResult = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(noticesTable);
-
-    const categoryResult = await db
-      .select({
-        category: noticesTable.category,
-        count: sql<number>`count(*)`,
-      })
-      .from(noticesTable)
-      .groupBy(noticesTable.category);
-
-    const priorityResult = await db
-      .select({
-        priority: noticesTable.priority,
-        count: sql<number>`count(*)`,
-      })
-      .from(noticesTable)
-      .groupBy(noticesTable.priority);
-
-    const byCategory = categoryResult.reduce(
-      (acc, row) => {
-        if (row.category) {
-          acc[row.category] = row.count;
-        }
-        return acc;
-      },
-      {} as Record<string, number>
-    );
-
-    const byPriority = priorityResult.reduce(
-      (acc, row) => {
-        if (row.priority) {
-          acc[row.priority] = row.count;
-        }
-        return acc;
-      },
-      {} as Record<string, number>
-    );
-
-    const stats = {
-      total: totalResult[0]?.count || 0,
-      byCategory,
-      byPriority,
-    };
-
-    return { data: stats, success: true };
-  } catch (error) {
-    return {
-      error: `Failed to fetch notice statistics: ${error instanceof Error ? error.message : "Unknown error"}`,
       success: false,
     };
   }
