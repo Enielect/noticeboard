@@ -12,7 +12,7 @@ export const metadata = {
   title: "Student Notice Board",
   description: "A real-time notice board and chat application for students",
   keywords: "student, notice board, chat, university, announcements",
-  authors: [{ name: "Your Name" }],
+  authors: [{ name: "Eniola Abayomi" }],
 };
 
 export default function RootLayout({

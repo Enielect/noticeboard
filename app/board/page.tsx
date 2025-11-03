@@ -11,25 +11,27 @@ const BoardPage = async () => {
 
   const user = verifyToken(token || "") ?? { email: "", userId: "", type: "" };
   const userData = await getUserById(user.userId);
-  const userVerifiedPromise =  db.query.usersTable.findFirst({
+  const userVerifiedPromise = db.query.usersTable.findFirst({
     where: (usersTable, { eq, and }) =>
       and(eq(usersTable.email, user.email), eq(usersTable.isVerified, true)),
   });
 
+  const [isUserVerified, notices] = await Promise.allSettled([
+    userVerifiedPromise,
+    getNotices(),
+  ]);
 
-
-  const [isUserVerified, notices] = await Promise.allSettled([userVerifiedPromise, getNotices()]);
-
-  if (!userData.data) {
-    redirect("/login");
-  }
-
-  if (!token) {
+  if (userData.success === false || !userData.data) {
     redirect("/login");
   }
 
   //first time I am uing the allSettled method, you have to check if the promise was fulfilled or rejected, then access the value or reason property respectively
-  const noticesData = notices.status === 'fulfilled' ? notices.value.data ? notices.value.data : [] : [];
+  const noticesData =
+    notices.status === "fulfilled"
+      ? notices.value.data
+        ? notices.value.data
+        : []
+      : [];
 
   return (
     <div
@@ -37,7 +39,10 @@ const BoardPage = async () => {
       style={{ backgroundImage: "url('/background.jpeg')" }}
     >
       {isUserVerified ? (
-        <StudentNoticeBoardApp initialNotices={noticesData} user={userData.data} />
+        <StudentNoticeBoardApp
+          initialNotices={noticesData}
+          user={userData.data}
+        />
       ) : (
         <p>Check your email to verify your account</p>
       )}
