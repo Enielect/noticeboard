@@ -40,7 +40,6 @@ export function generateVerificationToken() {
 export function isValidEmail(email: string): boolean {
   // const allowedDomains = process.env.ALLOWED_EMAIL_DOMAINS?.split(",") || [];
   const allowedDomains = ['live.unilag.edu.ng', 'unilag.edu.ng', 'college.edu', 'gmail.com']; //only adding this for testing purposes
-  console.log("Allowed domains:", allowedDomains);
   const domain = email.split("@")[1];
   return allowedDomains.includes(domain);
 }
