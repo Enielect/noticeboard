@@ -49,7 +49,7 @@ export default function Register() {
       }
 
       await res.json();
-      router.push("/");
+      alert("Check your email to verify your account");
     } catch (err) {
       console.error("Registration error:", err);
       setError("An unexpected error occurred. Please try again.");
