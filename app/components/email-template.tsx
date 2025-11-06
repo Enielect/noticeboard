@@ -11,7 +11,7 @@ export function EmailTemplate({ firstName, token }: EmailTemplateProps) {
       <h1>Welcome, {firstName}!</h1>
       <p>
         Follow this{" "}
-        <a href={`${process.env.SERVER_URL}/api/auth/verify?token=${token}`}>link</a> to
+        <a href={`${process.env.SERVER_URL}/verify?token=${token}`}>link</a> to
         verify your account
       </p>
     </div>
