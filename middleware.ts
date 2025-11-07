@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { verifyToken } from "./lib/auth";
 
@@ -17,6 +16,7 @@ export async function middleware(request: NextRequest) {
     if (!token) {
       // For API routes, return 401 instead of redirect
       if (request.nextUrl.pathname.startsWith("/api/")) {
+        console.log("redirect from middleware");
         return NextResponse.json(
           { error: "Unauthorized - Please login" },
           { status: 401 }

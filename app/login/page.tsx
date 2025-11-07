@@ -49,7 +49,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="absolute top-0 left-0 w-full h-[18rem] overflow-hidden leading-none rotate-180">
+      <div className="fixed top-0 left-0 w-full h-[18rem] overflow-hidden leading-none rotate-180">
         <WaveSvg />
       </div>
       <div className="max-w-md w-full space-y-8">
@@ -110,7 +110,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="absolute bottom-0 left-0 w-full h-[18rem] overflow-hidden leading-none">
+      <div className="fixed bottom-0 left-0 w-full h-[18rem] overflow-hidden leading-none">
         <WaveSvg />
       </div>
     </div>

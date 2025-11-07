@@ -16,8 +16,9 @@ export async function POST(request: NextRequest) {
     const user = await getUser(email);
     if (!user.success || !user.data) {
       console.log("User not found:", email);
+      console.log("user data:", user);
       return NextResponse.json(
-        { error: "Invalid credentials" },
+        { error: user.error?.includes("Failed query") && "There was an issue retrieving user data, try again later" || "Invalid credentials" },
         { status: 401 }
       );
     }
