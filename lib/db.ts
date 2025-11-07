@@ -1,6 +1,6 @@
 "use server";
 
-import db from "@/db/db";
+import { db } from "@/db/db";
 import {
   ChatMessage,
   chatMessagesTable,
@@ -9,56 +9,102 @@ import {
   User,
   usersTable,
 } from "@/db/schema";
-import type { CreateUserData, CreateNoticeData, DatabaseResult, ChatMessageWithAuthor, NoticeWithAuthor } from "@/lib/types/db";
+import type {
+  CreateUserData,
+  CreateNoticeData,
+  DatabaseResult,
+  ChatMessageWithAuthor,
+  NoticeWithAuthor,
+} from "@/lib/types/db";
 import { eq, gte, sql, DrizzleError } from "drizzle-orm";
 import { desc } from "drizzle-orm";
+
+export async function withRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries = 3,
+  delay = 1000
+): Promise<T> {
+  let lastError: Error;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      lastError = error;
+
+      // Check if it's a connection error
+      const isConnectionError =
+        error.code === "ETIMEDOUT" ||
+        error.message?.includes("timeout") ||
+        error.message?.includes("connection") ||
+        error.message?.includes("ECONNRESET");
+
+      if (isConnectionError && attempt < maxRetries) {
+        console.log(`Database retry ${attempt}/${maxRetries}:`, error.message);
+        await new Promise((resolve) => setTimeout(resolve, delay * attempt));
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw lastError!;
+}
 
 export async function getUser(
   email: string
 ): Promise<DatabaseResult<User | null>> {
-  try {
-    const result = await db.query.usersTable.findFirst({
-      where: eq(usersTable.email, email),
-    });
-    return { data: result || null, success: true };
-  } catch (error) {
-    return {
-      error: `Failed to fetch user by email: ${error instanceof Error ? error.message : "Unknown error"}`,
-      success: false,
-    };
-  }
+  return withRetry(async () => {
+    try {
+      const result = await db.query.usersTable.findFirst({
+        where: eq(usersTable.email, email),
+      });
+      return { data: result || null, success: true };
+    } catch (error) {
+      return {
+        error: `Failed to fetch user by email: ${error instanceof Error ? error.message : "Unknown error"}`,
+        success: false,
+      };
+    }
+  });
 }
 
 export async function getUserById(
   id: string
 ): Promise<DatabaseResult<User | null>> {
-  try {
-    const result = await db.query.usersTable.findFirst({
-      where: eq(usersTable.id, id),
-    });
-    return { data: result || null, success: true };
-  } catch (error) {
-    return {
-      error: `Failed to fetch user by ID: ${error instanceof Error ? error.message : "Unknown error"}`,
-      success: false,
-    };
-  }
+  return withRetry(async () => {
+    try {
+      const result = await db.query.usersTable.findFirst({
+        where: eq(usersTable.id, id),
+      });
+      console.log(result, "result from getting a user");
+      return { data: result || null, success: true };
+    } catch (error) {
+      return {
+        error: `Failed to fetch user by ID: ${error instanceof Error ? error.message : "Unknown error"}`,
+        success: false,
+      };
+    }
+  });
 }
 
 export async function getUserByMatric(
   studentId: string
 ): Promise<DatabaseResult<User | null>> {
-  try {
-    const result = await db.query.usersTable.findFirst({
-      where: eq(usersTable.studentId, studentId),
-    });
-    return { data: result || null, success: true };
-  } catch (error) {
-    return {
-      error: `Failed to fetch user by student ID: ${error instanceof Error ? error.message : "Unknown error"}`,
-      success: false,
-    };
-  }
+  return withRetry(async () => {
+    try {
+      const result = await db.query.usersTable.findFirst({
+        where: eq(usersTable.studentId, studentId),
+      });
+      return { data: result || null, success: true };
+    } catch (error) {
+      return {
+        error: `Failed to fetch user by student ID: ${error instanceof Error ? error.message : "Unknown error"}`,
+        success: false,
+      };
+    }
+  });
 }
 
 export async function createUser(
@@ -81,7 +127,6 @@ export async function createUser(
     return { data: result[0], success: true };
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
-
     // Handling a unique constraint violation error
     const pgErr = error.cause || error;
     if (pgErr.code === "23505") {
@@ -143,26 +188,28 @@ export async function getNotices(
   limit: number = 50
 ): Promise<DatabaseResult<NoticeWithAuthor[]>> {
   try {
-    const result = await db.query.noticesTable.findMany({
-      where: gte(noticesTable.expiresAt, new Date()),
-      orderBy: [desc(noticesTable.isPinned), desc(noticesTable.createdAt)],
-      limit: limit,
-    });
-
-    const noticesWithAuthors = await Promise.all(
-      result.map(async (notice) => {
-        const userResult = await getUserById(notice.authorId || "");
-        return {
-          ...notice,
-          authorName:
-            userResult.success && userResult.data?.fullName
-              ? userResult.data.fullName
-              : "Unknown User",
-        };
+    // Use JOIN instead of separate queries
+    const result = await db
+      .select({
+        id: noticesTable.id,
+        title: noticesTable.title,
+        content: noticesTable.content,
+        category: noticesTable.category,
+        priority: noticesTable.priority,
+        isPinned: noticesTable.isPinned,
+        authorId: noticesTable.authorId,
+        expiresAt: noticesTable.expiresAt,
+        createdAt: noticesTable.createdAt,
+        updatedAt: noticesTable.updatedAt,
+        authorName: usersTable.fullName,
       })
-    );
+      .from(noticesTable)
+      .leftJoin(usersTable, eq(noticesTable.authorId, usersTable.id))
+      .where(gte(noticesTable.expiresAt, new Date()))
+      .orderBy(desc(noticesTable.isPinned), desc(noticesTable.createdAt))
+      .limit(limit);
 
-    return { data: noticesWithAuthors, success: true };
+    return { data: result, success: true };
   } catch (error) {
     return {
       error: `Failed to fetch notices: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -232,28 +279,24 @@ export async function createNotice(
 }
 
 export async function getChatMessages(
-  limit: number = 100
+  limit: number = 15
 ): Promise<DatabaseResult<ChatMessageWithAuthor[]>> {
   try {
-    const result = await db.query.chatMessagesTable.findMany({
-      orderBy: [desc(chatMessagesTable.createdAt)],
-      limit: limit,
-    });
-
-    const messagesWithAuthors = await Promise.all(
-      result.map(async (message) => {
-        const userResult = await getUserById(message.authorId || "");
-        return {
-          ...message,
-          authorName:
-            userResult.success && userResult.data?.fullName
-              ? userResult.data.fullName
-              : "Unknown User",
-        };
+    // Use JOIN instead of separate queries
+    const result = await db
+      .select({
+        id: chatMessagesTable.id,
+        message: chatMessagesTable.message,
+        authorId: chatMessagesTable.authorId,
+        createdAt: chatMessagesTable.createdAt,
+        authorName: usersTable.fullName,
       })
-    );
+      .from(chatMessagesTable)
+      .leftJoin(usersTable, eq(chatMessagesTable.authorId, usersTable.id))
+      .orderBy(desc(chatMessagesTable.createdAt))
+      .limit(limit);
 
-    return { data: messagesWithAuthors, success: true };
+    return { data: result, success: true };
   } catch (error) {
     return {
       error: `Failed to fetch chat messages: ${error instanceof Error ? error.message : "Unknown error"}`,
