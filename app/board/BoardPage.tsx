@@ -20,18 +20,25 @@ import {
 import { logout } from "../action/logout";
 import { formatDate, getCategoryColor, getPriorityColor } from "@/lib/utils";
 
-import type {Notification, Notice, TChatMessages, TUser} from "@/lib/types/general";
+import type { Notification, Notice, TUser } from "@/lib/types/general";
+import { ChatMessageWithAuthor } from "@/lib/types/db";
+
+type TNoticeBoardProp = {
+  user: TUser;
+  initialNotices: Notice[];
+  initialMessages: ChatMessageWithAuthor[];
+};
 
 export default function StudentNoticeBoardApp({
   user,
   initialNotices,
-}: {
-  user: TUser;
-  initialNotices: Notice[];
-}) {
+  initialMessages,
+}: TNoticeBoardProp) {
   const [notices, setNotices] = useState<Notice[]>(initialNotices);
   const [createNoticeLoading, setCreateNoticeLoading] = useState(false);
-  const [chatMessages, setChatMessages] = useState<TChatMessages[]>([]);
+  const [chatMessages, setChatMessages] =
+    useState<ChatMessageWithAuthor[]>(initialMessages);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [activeTab, setActiveTab] = useState("notices");
   const [newMessage, setNewMessage] = useState("");
   const [newNotice, setNewNotice] = useState({
@@ -78,7 +85,6 @@ export default function StudentNoticeBoardApp({
     };
   }, [notices]);
 
-
   // Auto-scroll chat to bottom
   useEffect(() => {
     if (chatEndRef.current) {
@@ -86,7 +92,7 @@ export default function StudentNoticeBoardApp({
     }
   }, [chatMessages]);
 
-  const handleLogout = async() => {
+  const handleLogout = async () => {
     if (socket) {
       socket.disconnect();
     }
@@ -94,7 +100,9 @@ export default function StudentNoticeBoardApp({
   };
 
   // Handle sending chat messages
-  const handleSendMessage = () => {
+  const handleSendMessage = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsSendingMessage(true);
     if (newMessage.trim() && socket?.connected && user) {
       const messageData = {
         id: Date.now(),
@@ -104,8 +112,29 @@ export default function StudentNoticeBoardApp({
         created_at: new Date().toISOString(),
       };
 
+      try {
+        console.log("started here");
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ message: newMessage.trim() }),
+        });
+
+        if (!response.ok) {
+          addNotification("Failed to send message", "error");
+          return;
+        }
+        console.log("ended here...");
+      } catch (err) {
+        console.error("Send message error:", err);
+        return;
+      }
+
       socket.emit("message", messageData);
       setNewMessage("");
+      setIsSendingMessage(false);
     } else if (!socket?.connected) {
       addNotification("Not connected to chat server", "error");
     }
@@ -197,7 +226,6 @@ export default function StudentNoticeBoardApp({
     return matchesSearch && matchesCategory;
   });
 
-
   return (
     //  bg-gradient-to-br from-blue-50 via-white to-purple-50
     <div className="min-h-screen">
@@ -275,9 +303,7 @@ export default function StudentNoticeBoardApp({
                     <p className="text-sm font-medium text-white">
                       {user?.fullName}
                     </p>
-                    <p className="text-xs text-white">
-                      {user?.studentId}
-                    </p>
+                    <p className="text-xs text-white">{user?.studentId}</p>
                   </div>
                 </div>
                 <button
@@ -502,7 +528,9 @@ export default function StudentNoticeBoardApp({
                               {message.authorName}
                             </p>
                             <p className="text-xs text-gray-300">
-                              {formatDate(message.created_at)}
+                              {formatDate(
+                                new Date(message.createdAt).toLocaleDateString()
+                              )}
                             </p>
                           </div>
                           <p className="bg-gradient-to-r from-blue-500 to-purple-500 text-sm text-white bg-gray-50 rounded-lg px-3 py-2">
@@ -521,7 +549,7 @@ export default function StudentNoticeBoardApp({
                         type="text"
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyPress={
+                        onKeyDown={
                           (e) => e.key === "Enter" && (() => {}) // handleSendMessage()
                         }
                         placeholder="Type your message..."
@@ -530,7 +558,7 @@ export default function StudentNoticeBoardApp({
                       />
                       <button
                         onClick={handleSendMessage}
-                        disabled={!newMessage.trim()}
+                        disabled={!newMessage.trim() || isSendingMessage}
                         className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
                       >
                         <Send className="w-4 h-4" />
@@ -746,7 +774,11 @@ export default function StudentNoticeBoardApp({
               </button>
               <button
                 onClick={handleCreateNotice}
-                disabled={!newNotice.title.trim() || !newNotice.content.trim()}
+                disabled={
+                  !newNotice.title.trim() ||
+                  !newNotice.content.trim() ||
+                  createNoticeLoading
+                }
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {createNoticeLoading ? "Creating..." : "Create Notice"}
