@@ -10,6 +10,16 @@ export const formatDate = (dateString: string) => {
   return date.toLocaleDateString();
 };
 
+const options: Intl.DateTimeFormatOptions = {
+  hour: "numeric",
+  minute: "numeric",
+  second: "numeric",
+  hour12: true, 
+  timeZoneName: "short", // Display the time zone abbreviation
+};
+
+export const formatter = new Intl.DateTimeFormat("en-US", options);
+
 export const getPriorityColor = (priority: string) => {
   switch (priority) {
     case "high":

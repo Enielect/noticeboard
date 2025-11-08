@@ -20,14 +20,12 @@ import {
 import { logout } from "../action/logout";
 import { formatDate, getCategoryColor, getPriorityColor } from "@/lib/utils";
 
-import type { Notification, Notice, TUser } from "@/lib/types/general";
+import type {
+  Notification,
+  Notice,
+  TNoticeBoardProp,
+} from "@/lib/types/general";
 import { ChatMessageWithAuthor } from "@/lib/types/db";
-
-type TNoticeBoardProp = {
-  user: TUser;
-  initialNotices: Notice[];
-  initialMessages: ChatMessageWithAuthor[];
-};
 
 export default function StudentNoticeBoardApp({
   user,
@@ -529,7 +527,7 @@ export default function StudentNoticeBoardApp({
                             </p>
                             <p className="text-xs text-gray-300">
                               {formatDate(
-                                new Date(message.createdAt).toLocaleDateString()
+                                new Date(message.createdAt ?? Date.now()).toISOString()
                               )}
                             </p>
                           </div>
