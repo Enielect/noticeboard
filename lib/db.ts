@@ -29,6 +29,7 @@ export async function withRetry<T>(
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await operation();
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       lastError = error;
 
@@ -209,7 +210,12 @@ export async function getNotices(
       .orderBy(desc(noticesTable.isPinned), desc(noticesTable.createdAt))
       .limit(limit);
 
-    return { data: result, success: true };
+    const noticesWithAuthors = result.map((msg) => ({
+      ...msg,
+      authorName: msg.authorName || "Unknown User",
+    }));
+
+    return { data: noticesWithAuthors, success: true };
   } catch (error) {
     return {
       error: `Failed to fetch notices: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -296,7 +302,12 @@ export async function getChatMessages(
       .orderBy(desc(chatMessagesTable.createdAt))
       .limit(limit);
 
-    return { data: result, success: true };
+    const messagesWithAuthors = result.map((msg) => ({
+      ...msg,
+      authorName: msg.authorName || "Unknown User",
+    }));
+
+    return { data: messagesWithAuthors, success: true };
   } catch (error) {
     return {
       error: `Failed to fetch chat messages: ${error instanceof Error ? error.message : "Unknown error"}`,

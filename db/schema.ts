@@ -43,19 +43,12 @@ export const chatMessagesTable = pgTable("chat_messages", {
   id: uuid("id").defaultRandom().primaryKey(),
   message: varchar("message", { length: 500 }).notNull(),
   authorId: uuid("author_id")
-    .references(() => usersTable.id)
-    // .onDelete("CASCADE")
+    .references(() => usersTable.id, { onDelete: "cascade" })
     .notNull(),
   createdAt: timestamp("created_at").default(new Date()).notNull(),
 });
 
-// Create indexes for performance
-export const indexes = [
-  { table: "notices", column: "created_at", order: "DESC" },
-  { table: "notices", column: "category" },
-  { table: "notices", column: "is_pinned" },
-  { table: "chat_messages", column: "created_at", order: "DESC" },
-];
+
 
 export type User = typeof usersTable.$inferSelect;
 export type NewUser = typeof usersTable.$inferInsert;

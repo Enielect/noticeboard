@@ -1,3 +1,5 @@
+import { ChatMessageWithAuthor } from "./db";
+
 export interface Notification {
   id: number;
   message: string;
@@ -28,3 +30,9 @@ export interface TUser {
   fullName: string;
   studentId: string;
 }
+
+export type TNoticeBoardProp = {
+  user: TUser;
+  initialNotices: Notice[];
+  initialMessages: ChatMessageWithAuthor[];
+};

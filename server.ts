@@ -20,7 +20,7 @@ app.prepare().then(() => {
     socket.on("message", (msg) => {
       console.log("message: " + msg);
       io.emit("message", msg); // Broadcast message to all connected clients
-      io.emit("userCount", io.sockets.sockets.size); // Emit user count
+      io.emit("userCount", io.sockets.sockets.size); 
     });
 
     socket.on("notice", (notice) => {
@@ -30,7 +30,7 @@ app.prepare().then(() => {
 
     socket.on("disconnect", () => {
       console.log("user disconnected");
-      io.emit("userCount", io.sockets.sockets.size); // Emit user count
+      io.emit("userCount", io.sockets.sockets.size); 
     });
   });
 
